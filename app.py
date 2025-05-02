@@ -20,11 +20,14 @@ app.secret_key = os.getenv('SECRET_KEY', 'dev_secret_key')  # Change this in pro
 # Session timeout (30 minutes)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
+# Support for running behind a proxy in a subdirectory
+app.config['APPLICATION_ROOT'] = '/'
+
 @app.route('/')
 def index():
     if 'access_token' not in session:
-        return redirect(url_for('login'))
-    return redirect(url_for('dashboard'))
+        return redirect(url_for('login', _external=False))
+    return redirect(url_for('dashboard', _external=False))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -57,7 +60,7 @@ def login():
             session['refresh_token'] = token_info.get('refresh_token')
             session['token_expires'] = datetime.now().timestamp() + token_info.get('expires_in', 3600)
 
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('dashboard', _external=False))
 
         except requests.exceptions.RequestException as e:
             error_message = "Authentication failed"
@@ -74,7 +77,7 @@ def login():
 @app.route('/dashboard')
 def dashboard():
     if 'access_token' not in session:
-        return redirect(url_for('login'))
+        return redirect(url_for('login', _external=False))
 
     # Check if token is expired
     if datetime.now().timestamp() > session.get('token_expires', 0):
@@ -96,9 +99,9 @@ def dashboard():
                 session['refresh_token'] = token_info.get('refresh_token')
                 session['token_expires'] = datetime.now().timestamp() + token_info.get('expires_in', 3600)
             except:
-                return redirect(url_for('login'))
+                return redirect(url_for('login', _external=False))
         else:
-            return redirect(url_for('login'))
+            return redirect(url_for('login', _external=False))
 
     return render_template('dashboard.html')
 
@@ -182,7 +185,7 @@ def get_electricity_map_data():
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('login'))
+    return redirect(url_for('login', _external=False))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5002)), debug=True)
