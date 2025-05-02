@@ -21,13 +21,12 @@ app.secret_key = os.getenv('SECRET_KEY', 'dev_secret_key')  # Change this in pro
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 # Support for running behind a proxy in a subdirectory
-app.config['APPLICATION_ROOT'] = '/'
-
+app.config['APPLICATION_ROOT'] = os.getenv('APPLICATION_ROOT', '/')
 @app.route('/')
 def index():
     if 'access_token' not in session:
-        return redirect(url_for('login', _external=False))
-    return redirect(url_for('dashboard', _external=False))
+        return redirect(url_for('login'))
+    return redirect(url_for('dashboard'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
