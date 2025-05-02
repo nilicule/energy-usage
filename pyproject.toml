@@ -1,0 +1,11 @@
+[project]
+name = "energyusage"
+version = "0.1.0"
+description = "Energy Usage Web Application"
+requires-python = ">=3.8"
+dependencies = [
+    "flask",
+    "requests",
+    "python-dotenv",
+    "dotenv>=0.9.9",
+]

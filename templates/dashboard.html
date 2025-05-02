@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animated Energy Flow Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: #121212;
+      color: white;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #dashboard {
+      width: 100%;
+      height: 100%;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    .icon-bolt {
+      color: #facc15;
+      font-size: 1.75rem;
+    }
+
+    .user-actions {
+      display: flex;
+      align-items: center;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background-color 0.3s;
+    }
+
+    .btn-logout {
+      background-color: #e74c3c;
+      color: white;
+    }
+
+    .btn-logout:hover {
+      background-color: #c0392b;
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    #energyCanvas {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    .metrics {
+      margin-top: 2rem;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    .metric-card {
+      background-color: #1f2937;
+      padding: 1rem;
+      border-radius: 0.5rem;
+    }
+
+    .metric-card h3 {
+      color: #9ca3af;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .metric-card .value {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    .value.green {
+      color: #4ade80;
+    }
+
+    .value.blue {
+      color: #60a5fa;
+    }
+
+    /* Icon styles */
+    .icon {
+      text-align: center;
+      font-size: 2rem;
+    }
+
+    /* Custom circular node styles added to canvas */
+
+    @media (max-width: 640px) {
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .error-message {
+      background-color: #f8d7da;
+      color: #721c24;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+      display: none;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #7f8c8d;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="dashboard">
+    <div class="header">
+      <div class="header-title">
+        <div class="icon-bolt">⚡</div>
+        <h1>NET2GRID Energy Flow Dashboard</h1>
+      </div>
+      <div class="user-actions">
+        <a href="{{ url_for('logout') }}" class="btn btn-logout">Logout</a>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="loading" id="loading-indicator"></div>
+      <canvas id="energyCanvas"></canvas>
+      <div id="error-message" class="error-message"></div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric-card">
+        <h3>Total Power</h3>
+        <div id="totalPower" class="value">0 kWh</div>
+      </div>
+
+      <div class="metric-card">
+        <h3>Grid Balance</h3>
+        <div id="gridBalance" class="value blue">0 W</div>
+      </div>
+
+      <div class="metric-card">
+        <h3>Carbon Ratio</h3>
+        <div id="carbonRatio" class="value green">0%</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Dashboard configuration
+    const config = {
+      nodeRadius: 60,      // Radius of the circular nodes
+      animationSpeed: 0.7, // Animation speed factor
+      dataUpdateRate: 5000 // How often to update data (ms)
+    };
+
+    // Icons as base64 (for simplicity)
+    const icons = {
+      leaf: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM0YWRlODAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1sZWFmIj48cGF0aCBkPSJNMTEgMjBBNyA3IDAgMCAxIDQgMTNDNCAxMCAwIDEwIDAgNmMzIDAgNC0yIDcgLjVDOC41IDEwIDExIDEyIDEyIDIweiIvPjxwYXRoIGQ9Ik0xMyAyMGM3LTMgNy05IDQtMTQgMCA0LTEuNSA2LTQgOCI+PC9wYXRoPjwvc3ZnPg==',
+      flame: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNlZjQ0NDQiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1mbGFtZSI+PHBhdGggZD0iTTguNSAxNGMwIDQuNSA1LjUgNS41IDUuNSAwVjlDMTAgOSA4LjUgMTEgOC41IDE0WiIvPjxwYXRoIGQ9Ik0xNS41IDE0YzAgNC41IDUuNSA1LjUgNS41IDBWOUMxNyA5IDE1LjUgMTEgMTUuNSAxNFoiIG9wYWNpdHk9Ii41Ii8+PHBhdGggZD0iTTguNSAxOC41YzAgNC41IDUuNSA1LjUgNS41IDBWMTQiIG9wYWNpdHk9Ii41Ii8+PC9zdmc+',
+      home: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2MGE1ZmEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1ob21lIj48cGF0aCBkPSJtMyAxMCAxMS03IDExIDd2MTBhMiAyIDAgMCAxLTIgMkg1YTIgMiAwIDAgMS0yLTJ6Ii8+PHBhdGggZD0iTTkgMjJWMTJoNnYxMCIvPjwvc3ZnPg==',
+      zap: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2MGE1ZmEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS16YXAiPjxwb2x5Z29uIHBvaW50cz0iMTMgMiAzIDENCTE4IDEwIDE5LjEgMjIiLz48L3N2Zz4='
+    };
+
+    // Energy data structure
+    let energyData = {
+      lowCarbon: 0,  // kWh
+      gas: 0,        // kWh
+      gridIn: 0,     // W (import from grid)
+      gridOut: 0,    // W (export to grid)
+      home: 0        // kWh (home consumption)
+    };
+
+    // Animation variables
+    let animationFrame;
+    let animationTick = 0;
+
+    // Particle positions
+    const particles = {
+      lowCarbonToGrid: { active: true, progress: 0 },
+      gasToHome: { active: true, progress: 0 },
+      gridToHome: { active: false, progress: 0 }
+    };
+
+    // Preload images
+    const loadedIcons = {};
+
+    function preloadIcons() {
+      for (const [key, src] of Object.entries(icons)) {
+        const img = new Image();
+        img.src = src;
+        loadedIcons[key] = img;
+      }
+    }
+
+    // Initialize canvas
+    const canvas = document.getElementById('energyCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const container = document.querySelector('.main-content');
+      const size = Math.min(container.clientWidth, container.clientHeight) * 0.9;
+
+      canvas.width = size;
+      canvas.height = size;
+    }
+
+    // Draw functions
+    function drawNode(x, y, radius, borderColor, label, value, icon, unit = "kWh", valueOffset = 0, labelOffset = 0) {
+      // Draw circle
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = '#1f2937';
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = borderColor;
+      ctx.stroke();
+
+      // Draw icon
+      if (loadedIcons[icon]) {
+        const iconSize = radius * 0.6;
+        ctx.drawImage(
+          loadedIcons[icon],
+          x - iconSize / 2,
+          y - iconSize / 2 - 5,
+          iconSize,
+          iconSize
+        );
+      }
+
+      // Draw value
+      ctx.fillStyle = borderColor;
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${value} ${unit}`, x, y + radius * 0.4 + valueOffset);
+
+      // Draw label
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, x, y + radius + 20 + labelOffset);
+    }
+
+    function drawConnections() {
+      const width = canvas.width;
+      const height = canvas.height;
+      const nodePositions = {
+        lowCarbon: { x: width * 0.25, y: height * 0.2 },
+        gas: { x: width * 0.75, y: height * 0.2 },
+        grid: { x: width * 0.25, y: height * 0.8 },
+        home: { x: width * 0.75, y: height * 0.8 }
+      };
+
+      // Low Carbon to Grid vertical line
+      ctx.beginPath();
+      ctx.moveTo(nodePositions.lowCarbon.x, nodePositions.lowCarbon.y + config.nodeRadius);
+      ctx.lineTo(nodePositions.lowCarbon.x, nodePositions.grid.y - config.nodeRadius);
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Gas to Home - two segments (red and green)
+      // First segment (red)
+      ctx.beginPath();
+      ctx.moveTo(nodePositions.gas.x, nodePositions.gas.y + config.nodeRadius);
+      ctx.lineTo(nodePositions.gas.x, nodePositions.gas.y + (height * 0.3));
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Second segment (green)
+      ctx.beginPath();
+      ctx.moveTo(nodePositions.gas.x, nodePositions.gas.y + (height * 0.3));
+      ctx.lineTo(nodePositions.gas.x, nodePositions.home.y - config.nodeRadius);
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Grid to Home horizontal line
+      ctx.beginPath();
+      ctx.moveTo(nodePositions.grid.x + config.nodeRadius, nodePositions.grid.y);
+      ctx.lineTo(nodePositions.home.x - config.nodeRadius, nodePositions.home.y);
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      return nodePositions;
+    }
+
+    function drawParticle(startX, startY, endX, endY, progress, color) {
+      const x = startX + (endX - startX) * progress;
+      const y = startY + (endY - startY) * progress;
+
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      // Add a glow effect
+      ctx.beginPath();
+      ctx.arc(x, y, 8, 0, Math.PI * 2);
+      const gradient = ctx.createRadialGradient(x, y, 0, x, y, 8);
+      gradient.addColorStop(0, color);
+      gradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    }
+
+    function drawHomeEnergyLevel(x, y, radius, fillPercentage) {
+      // Draw a fill level indicator in the home node
+      const startAngle = Math.PI;
+      const endAngle = Math.PI * 2;
+
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.arc(x, y, radius * 0.9, startAngle, endAngle);
+      ctx.closePath();
+      ctx.clip();
+
+      // Calculate height based on percentage (0-100%)
+      const fillHeight = radius * 2 * (fillPercentage / 100);
+
+      // Draw gradient fill
+      const gradient = ctx.createLinearGradient(x, y + radius, x, y - radius);
+      gradient.addColorStop(0, 'rgba(34, 197, 94, 0.3)');
+      gradient.addColorStop(1, 'rgba(34, 197, 94, 0)');
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x - radius, y + radius - fillHeight, radius * 2, fillHeight);
+
+      // Reset clip
+      ctx.restore();
+      ctx.save();
+    }
+
+    function drawDashboard() {
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+
+      // Draw connections first (background)
+      const nodePositions = drawConnections();
+
+      // Update particle positions
+      particles.lowCarbonToGrid.progress = (particles.lowCarbonToGrid.progress + 0.005 * config.animationSpeed) % 1;
+      particles.gasToHome.progress = (particles.gasToHome.progress + 0.005 * config.animationSpeed) % 1;
+
+      if (energyData.gridIn > 0) {
+        particles.gridToHome.active = true;
+        particles.gridToHome.progress = (particles.gridToHome.progress + 0.005 * config.animationSpeed) % 1;
+      } else {
+        particles.gridToHome.active = false;
+      }
+
+      // Draw particles
+      if (energyData.lowCarbon > 0) {
+        drawParticle(
+          nodePositions.lowCarbon.x,
+          nodePositions.lowCarbon.y + config.nodeRadius,
+          nodePositions.lowCarbon.x,
+          nodePositions.grid.y - config.nodeRadius,
+          particles.lowCarbonToGrid.progress,
+          '#4ade80'
+        );
+      }
+
+      if (energyData.gas > 0) {
+        // Color transition from red to green halfway
+        const gasColor = particles.gasToHome.progress < 0.5 ? '#ef4444' : '#4ade80';
+        drawParticle(
+          nodePositions.gas.x,
+          nodePositions.gas.y + config.nodeRadius,
+          nodePositions.gas.x,
+          nodePositions.home.y - config.nodeRadius,
+          particles.gasToHome.progress,
+          gasColor
+        );
+      }
+
+      if (particles.gridToHome.active) {
+        drawParticle(
+          nodePositions.grid.x + config.nodeRadius,
+          nodePositions.grid.y,
+          nodePositions.home.x - config.nodeRadius,
+          nodePositions.home.y,
+          particles.gridToHome.progress,
+          '#60a5fa'
+        );
+      }
+
+      // Draw home energy level
+      ctx.save();
+      drawHomeEnergyLevel(
+        nodePositions.home.x,
+        nodePositions.home.y,
+        config.nodeRadius,
+        (energyData.home / 10) * 100  // Convert to percentage (max 10kWh)
+      );
+
+      // Draw nodes
+      drawNode(
+        nodePositions.lowCarbon.x,
+        nodePositions.lowCarbon.y,
+        config.nodeRadius,
+        '#22c55e',
+        'Low-carbon',
+        energyData.lowCarbon.toFixed(2),
+        'leaf',
+        "kWh",
+        0,
+        10  // Add extra spacing below the label
+      );
+
+      drawNode(
+        nodePositions.gas.x,
+        nodePositions.gas.y,
+        config.nodeRadius,
+        '#ef4444',
+        'Gas',
+        energyData.gas.toFixed(2),
+        'flame',
+        "kWh",
+        0,
+        10  // Add extra spacing below the label
+      );
+
+      // Grid node with special text
+      drawNode(
+        nodePositions.grid.x,
+        nodePositions.grid.y,
+        config.nodeRadius,
+        '#3b82f6',
+        'Grid',
+        '', // Empty value, we'll add custom text
+        'zap',
+        "",
+        0,
+        10  // Add extra spacing below the label
+      );
+
+      // Add custom grid text - single value with arrow based on sign
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+
+      // Position the text below the icon (y position adjusted to be below the icon)
+      const textY = nodePositions.grid.y + 35; // Position further below the icon
+
+      if (energyData.gridIn > 0) {
+        // Positive value: Purple arrow towards home (right)
+        ctx.fillStyle = '#a78bfa'; // Purple for import
+        ctx.fillText(`→ ${energyData.gridIn.toFixed(2)} W`, nodePositions.grid.x, textY);
+      } else if (energyData.gridOut > 0) {
+        // Negative value: Green arrow to the left
+        ctx.fillStyle = '#4ade80'; // Green for export
+        ctx.fillText(`← ${energyData.gridOut.toFixed(2)} W`, nodePositions.grid.x, textY);
+      } else {
+        // Zero value case
+        ctx.fillStyle = '#9ca3af'; // Gray
+        ctx.fillText(`0 W`, nodePositions.grid.x, textY);
+      }
+
+      drawNode(
+        nodePositions.home.x,
+        nodePositions.home.y,
+        config.nodeRadius,
+        '#3b82f6',
+        'Home',
+        energyData.home.toFixed(2),
+        'home',
+        'kWh',
+        10  // Add extra spacing between value and icon
+      );
+
+      ctx.restore();
+
+      // Update animation
+      animationFrame = requestAnimationFrame(drawDashboard);
+    }
+
+    // Update dashboard metrics
+    function updateMetrics() {
+      document.getElementById('totalPower').textContent =
+        `${(energyData.lowCarbon + energyData.gas).toFixed(2)} kWh`;
+
+      document.getElementById('gridBalance').textContent =
+        `${(energyData.gridOut - energyData.gridIn).toFixed(2)} W`;
+
+      document.getElementById('carbonRatio').textContent =
+        `${((energyData.lowCarbon / (energyData.lowCarbon + energyData.gas || 1)) * 100).toFixed(0)}%`;
+    }
+
+    // Fetch data from API
+    function fetchEnergyData() {
+      const errorMessage = document.getElementById('error-message');
+
+      // Hide error message but don't show loading indicator
+      errorMessage.style.display = 'none';
+
+      // Create promises for all API calls
+      const powerPromise = fetch('/api/power')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to fetch power data');
+          }
+          return response.json();
+        });
+
+      const homeEnergyPromise = fetch('/api/home-energy')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to fetch home energy data');
+          }
+          return response.json();
+        });
+
+      const electricityMapPromise = fetch('/api/electricity-map')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to fetch electricity map data');
+          }
+          return response.json();
+        });
+
+      // Wait for all promises to resolve
+      Promise.all([powerPromise, homeEnergyPromise, electricityMapPromise])
+        .then(([powerData, homeEnergyData, electricityMapData]) => {
+          // Process the power API data
+          if (powerData.data) {
+            // Get electricity power in W
+            const electricityPowerWatts = powerData.data.electricity && powerData.data.electricity.power 
+              ? powerData.data.electricity.power 
+              : 0;
+
+            // Convert electricity power from W to kWh for visualization
+            const electricityPower = electricityPowerWatts / 1000;
+
+            // Convert gas from m³/h to kWh (simplified conversion)
+            const gasPower = powerData.data.gas && powerData.data.gas.gas_hourly 
+              ? powerData.data.gas.gas_hourly * 10 // Simplified conversion factor
+              : 0;
+
+            // Determine grid import/export based on electricity value
+            // Negative electricity means export to grid, positive means import
+            const gridExport = electricityPower < 0 ? Math.abs(electricityPower) : 0;
+            const gridImport = electricityPower > 0 ? electricityPower : 0;
+
+            // Process the home energy API data
+            let homeConsumption = 0;
+            if (homeEnergyData.status === 'ok' && homeEnergyData.data && homeEnergyData.data.length > 0) {
+              // Get the measured value and divide by 1000 to get kWh
+              const measuredValue = homeEnergyData.data[0].measured || 0;
+              homeConsumption = measuredValue / 1000;
+            } else {
+              // Fallback to the original calculation if home energy data is not available
+              homeConsumption = electricityPowerWatts;
+            }
+
+            // Update our energy data model
+            energyData = {
+              lowCarbon: gridExport > 0 ? gridExport + 2 : 2, // Assume some baseline renewable
+              gas: gasPower,
+              gridIn: gridImport,
+              gridOut: gridExport,
+              home: homeConsumption
+            };
+
+            updateMetrics();
+          }
+        })
+        .catch(error => {
+          errorMessage.style.display = 'block';
+          errorMessage.textContent = error.message;
+          console.error('Error fetching data:', error);
+        });
+    }
+
+    // Initialize dashboard
+    function initDashboard() {
+      preloadIcons();
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      // Start animation loop
+      drawDashboard();
+
+      // Start data updates
+      fetchEnergyData();
+      setInterval(fetchEnergyData, config.dataUpdateRate);
+
+      // Initial metrics update
+      updateMetrics();
+    }
+
+    // Wait for all resources to load
+    window.addEventListener('load', initDashboard);
+  </script>
+</body>
+</html>
