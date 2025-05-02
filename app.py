@@ -13,6 +13,7 @@ CLIENT_ID = os.getenv('CLIENT_ID')
 CLIENT_SECRET = os.getenv('CLIENT_SECRET')
 API_BASE_URL = os.getenv('API_BASE_URL', 'https://api.n2g-ynni.net')
 ELECTRICITY_MAP_TOKEN = os.getenv('ELECTRICITY_MAP_TOKEN')
+APP_ROOT = os.getenv('APPLICATION_ROOT', '/')
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'dev_secret_key')  # Change this in production
@@ -26,8 +27,8 @@ app.config['APPLICATION_ROOT'] = '/'
 @app.route('/')
 def index():
     if 'access_token' not in session:
-        return redirect(url_for('login', _external=False))
-    return redirect(url_for('dashboard', _external=False))
+        return redirect(APP_ROOT + url_for('login', _external=False))
+    return redirect(APP_ROOT + url_for('dashboard', _external=False))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
