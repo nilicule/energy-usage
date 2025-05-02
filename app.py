@@ -22,13 +22,14 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 # Support for running behind a proxy in a subdirectory
 app.config['APPLICATION_ROOT'] = os.getenv('APPLICATION_ROOT', '/')
-@app.route('/')
-def index():
-    if 'access_token' not in session:
-        return redirect(url_for('login'))
-    return redirect(url_for('dashboard'))
+url_prefix = os.getenv('APPLICATION_ROOT', '/')
+# Ensure trailing slash is stripped if present (unless it's just "/")
+if url_prefix != "/" and url_prefix.endswith('/'):
+    url_prefix = url_prefix[:-1]
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route(f'{url_prefix}/')
+
+@app.route(f'{url_prefix}/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
@@ -73,7 +74,7 @@ def login():
 
     return render_template('login.html')
 
-@app.route('/dashboard')
+@app.route(f'{url_prefix}/dashboard')
 def dashboard():
     if 'access_token' not in session:
         return redirect(url_for('login', _external=False))
@@ -104,7 +105,7 @@ def dashboard():
 
     return render_template('dashboard.html')
 
-@app.route('/api/power')
+@app.route(f'{url_prefix}/api/power')
 def get_power_data():
     if 'access_token' not in session:
         return json.dumps({'error': 'Not authenticated'}), 401
@@ -128,7 +129,7 @@ def get_power_data():
                 pass
         return json.dumps({'error': error_message}), 500
 
-@app.route('/api/home-energy')
+@app.route(f'{url_prefix}/api/home-energy')
 def get_home_energy_data():
     if 'access_token' not in session:
         return json.dumps({'error': 'Not authenticated'}), 401
@@ -158,7 +159,7 @@ def get_home_energy_data():
                 pass
         return json.dumps({'error': error_message}), 500
 
-@app.route('/api/electricity-map')
+@app.route(f'{url_prefix}/api/electricity-map')
 def get_electricity_map_data():
     try:
         # Get power breakdown data from Electricity Map API
@@ -181,7 +182,7 @@ def get_electricity_map_data():
                 pass
         return json.dumps({'error': error_message}), 500
 
-@app.route('/logout')
+@app.route(f'{url_prefix}/logout')
 def logout():
     session.clear()
     return redirect(url_for('login', _external=False))
