@@ -54,7 +54,7 @@ def login():
             if 'challenge_name' in token_info:
                 # Handle MFA challenge (not implemented in this basic version)
                 flash('MFA is required but not supported in this demo', 'error')
-                return render_template('login.html')
+                return render_template('login.html', APP_ROOT)
 
             # Store token in session
             session['access_token'] = token_info.get('access_token')
@@ -73,7 +73,7 @@ def login():
                     pass
             flash(error_message, 'error')
 
-    return render_template('login.html')
+    return render_template('login.html', APP_ROOT=APP_ROOT)
 
 @app.route('/dashboard')
 def dashboard():
