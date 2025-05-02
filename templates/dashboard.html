@@ -208,7 +208,8 @@
       gas: 0,        // kWh
       gridIn: 0,     // W (import from grid)
       gridOut: 0,    // W (export to grid)
-      home: 0        // kWh (home consumption)
+      home: 0,       // kWh (home consumption)
+      renewablePercentage: 0  // Percentage of renewable energy
     };
 
     // Animation variables
@@ -246,7 +247,7 @@
     }
 
     // Draw functions
-    function drawNode(x, y, radius, borderColor, label, value, icon, unit = "kWh", valueOffset = 0, labelOffset = 0) {
+    function drawNode(x, y, radius, borderColor, label, value, icon, unit = "kWh", valueOffset = 0, labelOffset = 0, labelPosition = "bottom") {
       // Draw circle
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -255,6 +256,14 @@
       ctx.lineWidth = 4;
       ctx.strokeStyle = borderColor;
       ctx.stroke();
+
+      // Draw label based on position
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      if (labelPosition === "top") {
+        ctx.fillText(label, x, y - radius - 10 + labelOffset);
+      }
 
       // Draw icon
       if (loadedIcons[icon]) {
@@ -274,11 +283,13 @@
       ctx.textAlign = 'center';
       ctx.fillText(`${value} ${unit}`, x, y + radius * 0.4 + valueOffset);
 
-      // Draw label
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = '14px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(label, x, y + radius + 20 + labelOffset);
+      // Draw label if position is bottom
+      if (labelPosition === "bottom") {
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x, y + radius + 20 + labelOffset);
+      }
     }
 
     function drawConnections() {
@@ -448,7 +459,8 @@
         'leaf',
         "kWh",
         0,
-        10  // Add extra spacing below the label
+        0,  // No extra spacing needed for top label
+        "top"  // Position label above the block
       );
 
       drawNode(
@@ -461,7 +473,8 @@
         'flame',
         "kWh",
         0,
-        10  // Add extra spacing below the label
+        0,  // No extra spacing needed for top label
+        "top"  // Position label above the block
       );
 
       // Grid node with special text
@@ -526,7 +539,7 @@
         `${(energyData.gridOut - energyData.gridIn).toFixed(2)} W`;
 
       document.getElementById('carbonRatio').textContent =
-        `${((energyData.lowCarbon / (energyData.lowCarbon + energyData.gas || 1)) * 100).toFixed(0)}%`;
+        `${energyData.renewablePercentage}%`;
     }
 
     // Fetch data from API
@@ -595,13 +608,20 @@
               homeConsumption = electricityPowerWatts;
             }
 
+            // Extract renewable percentage from electricity map data
+            let renewablePercentage = 0;
+            if (electricityMapData && electricityMapData.renewablePercentage !== undefined) {
+              renewablePercentage = electricityMapData.renewablePercentage;
+            }
+
             // Update our energy data model
             energyData = {
               lowCarbon: gridExport > 0 ? gridExport + 2 : 2, // Assume some baseline renewable
               gas: gasPower,
               gridIn: gridImport,
               gridOut: gridExport,
-              home: homeConsumption
+              home: homeConsumption,
+              renewablePercentage: renewablePercentage
             };
 
             updateMetrics();
