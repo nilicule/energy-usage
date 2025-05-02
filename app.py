@@ -54,7 +54,7 @@ def login():
             if 'challenge_name' in token_info:
                 # Handle MFA challenge (not implemented in this basic version)
                 flash('MFA is required but not supported in this demo', 'error')
-                return render_template('login.html', APP_ROOT)
+                return render_template('login.html', APP_ROOT=APP_ROOT)
 
             # Store token in session
             session['access_token'] = token_info.get('access_token')
@@ -104,7 +104,7 @@ def dashboard():
         else:
             return redirect(APP_ROOT + url_for('login', _external=False))
 
-    return render_template('dashboard.html')
+    return render_template('dashboard.html', APP_ROOT=APP_ROOT)
 
 @app.route('/api/power')
 def get_power_data():

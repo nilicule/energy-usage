@@ -537,7 +537,7 @@
       errorMessage.style.display = 'none';
 
       // Create promises for all API calls
-      const powerPromise = fetch('{{ url_for("get_power_data") }}')
+      const powerPromise = fetch('{{ APP_ROOT + url_for("get_power_data") }}')
         .then(response => {
           if (!response.ok) {
             throw new Error('Failed to fetch power data');
@@ -545,7 +545,7 @@
           return response.json();
         });
 
-      const homeEnergyPromise = fetch('{{ url_for("get_home_energy_data") }}')
+      const homeEnergyPromise = fetch('{{ APP_ROOT + url_for("get_home_energy_data") }}')
         .then(response => {
           if (!response.ok) {
             throw new Error('Failed to fetch home energy data');
@@ -553,7 +553,7 @@
           return response.json();
         });
 
-      const electricityMapPromise = fetch('{{ url_for("get_electricity_map_data") }}')
+      const electricityMapPromise = fetch('{{ APP_ROOT + url_for("get_electricity_map_data") }}')
         .then(response => {
           if (!response.ok) {
             throw new Error('Failed to fetch electricity map data');
