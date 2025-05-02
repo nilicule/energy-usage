@@ -26,8 +26,8 @@ app.config['APPLICATION_ROOT'] = '/'
 @app.route('/')
 def index():
     if 'access_token' not in session:
-        return redirect(url_for('login'))
-    return redirect(url_for('dashboard'))
+        return redirect(url_for('login', _external=False))
+    return redirect(url_for('dashboard', _external=False))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
