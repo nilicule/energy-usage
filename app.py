@@ -175,7 +175,7 @@ def get_gas_data():
 
         # Get gas data for today using the correct endpoint
         response = requests.get(
-            f"{API_BASE_URL}/energy-measurements/gas/real-time/days/{today}/{today}", 
+            f"{API_BASE_URL}/v2/energy-measurements/gas/real-time/days/{today}/{today}",
             headers=headers
         )
         response.raise_for_status()
