@@ -566,6 +566,14 @@
           return response.json();
         });
 
+      const gasPromise = fetch('{{ APP_ROOT + url_for("get_gas_data") }}')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to fetch gas data');
+          }
+          return response.json();
+        });
+
       const electricityMapPromise = fetch('{{ APP_ROOT + url_for("get_electricity_map_data") }}')
         .then(response => {
           if (!response.ok) {
@@ -575,8 +583,8 @@
         });
 
       // Wait for all promises to resolve
-      Promise.all([powerPromise, homeEnergyPromise, electricityMapPromise])
-        .then(([powerData, homeEnergyData, electricityMapData]) => {
+      Promise.all([powerPromise, homeEnergyPromise, gasPromise, electricityMapPromise])
+        .then(([powerData, homeEnergyData, gasData, electricityMapData]) => {
           // Process the power API data
           if (powerData.data) {
             // Get electricity power in W
@@ -587,10 +595,19 @@
             // Convert electricity power from W to kWh for visualization
             const electricityPower = electricityPowerWatts / 1000;
 
-            // Convert gas from m³/h to kWh (simplified conversion)
-            const gasPower = powerData.data.gas && powerData.data.gas.gas_hourly 
-              ? powerData.data.gas.gas_hourly * 10 // Simplified conversion factor
-              : 0;
+            // Get gas data from the new endpoint (in L) and convert to m³ by dividing by 1000
+            // Then convert to kWh using a simplified conversion factor
+            let gasPower = 0;
+            if (gasData.status === 'ok' && gasData.data && gasData.data.length > 0) {
+              // Get the measured value, divide by 1000 to convert from L to m³, then multiply by 10 for kWh
+              const gasValue = gasData.data[0].measured || 0;
+              gasPower = (gasValue / 1000) * 10; // Convert L to m³, then to kWh
+            } else {
+              // Fallback to the original calculation if gas data is not available
+              gasPower = powerData.data.gas && powerData.data.gas.gas_hourly 
+                ? powerData.data.gas.gas_hourly * 10 // Simplified conversion factor
+                : 0;
+            }
 
             // Determine grid import/export based on electricity value
             // Negative electricity means export to grid, positive means import

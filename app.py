@@ -160,6 +160,36 @@ def get_home_energy_data():
                 pass
         return json.dumps({'error': error_message}), 500
 
+@app.route('/api/gas')
+def get_gas_data():
+    if 'access_token' not in session:
+        return json.dumps({'error': 'Not authenticated'}), 401
+
+    headers = {
+        'Authorization': f"Bearer {session['access_token']}"
+    }
+
+    try:
+        # Calculate today's date
+        today = datetime.now().strftime('%Y-%m-%d')
+
+        # Get gas data for today using the correct endpoint
+        response = requests.get(
+            f"{API_BASE_URL}/energy-measurements/gas/real-time/days/{today}/{today}", 
+            headers=headers
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        error_message = "Failed to fetch gas data"
+        if hasattr(e, 'response') and e.response is not None:
+            try:
+                error_data = e.response.json()
+                error_message = error_data.get('error_description', error_message)
+            except:
+                pass
+        return json.dumps({'error': error_message}), 500
+
 @app.route('/api/electricity-map')
 def get_electricity_map_data():
     try:
